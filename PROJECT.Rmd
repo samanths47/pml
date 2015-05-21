@@ -1,0 +1,99 @@
+---
+title: "Project"
+author: "Samanth"
+date: "Thursday, May 21, 2015"
+output: html_document
+---
+## Introduction
+
+Usage of devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+
+The aim of this report is to use data from accelerometers placed on the belt, forearm, arm, and dumbell of six participants to predict how well they were doing the exercise in terms of the classification in the data.
+
+caret,corrplot,kernlab,knitr,randomforest libraries were used in this analysis 
+
+```{r,include=FALSE}
+library(caret)
+library(kernlab)
+library(randomForest)
+library(corrplot)
+```
+
+The data files are downloaded into local system and analysis is done. 
+
+```{r}
+# read the file for training 
+data_training <- read.csv("E:/Backups/Samanth/samanth/coursera/PML/pml-training.csv", na.strings= c("NA",""," "))
+```
+
+Data cleaning is done by removing NA values and also 8 columns that acted as identifiers were removed.
+
+```{r}
+# clean the data by removing columns with NAs etc
+data_training_NAs <- apply(data_training, 2, function(x) {sum(is.na(x))})
+data_training_clean <- data_training[,which(data_training_NAs == 0)]
+
+# remove identifier columns such as name, timestamps etc
+data_training_clean <- data_training_clean[8:length(data_training_clean)]
+```
+
+## Creating a model
+The training data was split up into training and cross validation sets in a 60:40 ratio in order to train the model and then test it against cross validation data.
+
+```{r}
+# split the cleaned testing data into training and cross validation
+inTrain <- createDataPartition(y = data_training_clean$classe, p = 0.6, list = FALSE)
+training <- data_training_clean[inTrain, ]
+crossval <- data_training_clean[-inTrain, ]
+```
+
+A random forest model was selected to predict the classification. The correlation between any two trees in the forest increases the forest error rate. Therefore, a correlation plot was produced in order to see how strong the variables relationships are with each other.
+
+```{r, fig.height = 6, fig.width = 8}
+# plot a correlation matrix
+correlMatrix <- cor(training[, -length(training)])
+corrplot(correlMatrix, order = "FPC", method = "circle", type = "lower", tl.cex = 0.8,  tl.col = rgb(0, 0, 0))
+```
+
+In this type of plot the dark red and blue colours indicate a highly '-'ve and '+'ve relationship respectively between the variables. There isn't much concern for highly correlated predictors which means that all of them can be included in the model.
+
+Then a model was fitted with the outcome set to the training class and all the other variables used to predict.
+
+```{r}
+# fit a model to predict the classe using everything else as a predictor
+model <- randomForest(classe ~ ., data = training)
+model
+```
+
+The model produced a very small OOB error rate of .59%. This was deemed satisfactory enough to progress the testing.
+
+## Cross-validation
+The model was then used to classify the remaining 30% of data. The results were placed in a confusion matrix along with the actual classifications in order to determine the accuracy of the model.
+
+```{r}
+# crossvalidate the model using the remaining 30% of data
+predictCrossVal <- predict(model, crossval)
+confusionMatrix(crossval$classe, predictCrossVal)
+```
+
+This model yielded a 99.29% prediction accuracy. This model is adequate to predict any new dataset
+
+## Predictions
+Test data set was then loaded into R and cleaned in the same manner as before. The model was then used to predict the classifications of the 20 results of this new data.
+
+```{r}
+# apply the same treatment to the final testing data
+data_test <- read.csv("E:/Backups/Samanth/samanth/coursera/PML/pml-testing.csv", na.strings= c("NA",""," "))
+data_test_NAs <- apply(data_test, 2, function(x) {sum(is.na(x))})
+data_test_clean <- data_test[,which(data_test_NAs == 0)]
+data_test_clean <- data_test_clean[8:length(data_test_clean)]
+
+
+# predict the classes of the test set
+predictTest <- predict(model, data_test_clean)
+pred1<-predict(model, data_test_clean[1,])
+pred1
+```
+
+## Conclusions
+From the given data it is possible to predict the performance of exercise by a person using random forest method.

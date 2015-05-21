@@ -1,0 +1,44 @@
+library(caret)
+library(kernlab)
+library(randomForest)
+install.packages("corrplot")
+library(corrplot)
+
+# read the csv file for training 
+data_training <- read.csv("E:/Backups/Samanth/samanth/coursera/PML/pml-training.csv", na.strings= c("NA",""," "))
+
+# clean the data by removing columns with NAs etc
+data_training_NAs <- apply(data_training, 2, function(x) {sum(is.na(x))})
+data_training_clean <- data_training[,which(data_training_NAs == 0)]
+
+# remove identifier columns such as name, timestamps etc
+data_training_clean <- data_training_clean[8:length(data_training_clean)]
+
+# split the cleaned testing data into training and cross validation
+inTrain <- createDataPartition(y = data_training_clean$classe, p = 0.6, list = FALSE)
+training <- data_training_clean[inTrain, ]
+crossval <- data_training_clean[-inTrain, ]
+
+# plot a correlation matrix
+correlMatrix <- cor(training[, -length(training)])
+corrplot(correlMatrix, order = "FPC", method = "circle", type = "lower", tl.cex = 0.8,  tl.col = rgb(0, 0, 0))
+
+# fit a model to predict the classe using everything else as a predictor
+model <- randomForest(classe ~ ., data = training)
+
+# crossvalidate the model using the remaining 40% of data
+predictCrossVal <- predict(model, crossval)
+confusionMatrix(crossval$classe, predictCrossVal)
+
+# apply the same treatment to the final testing data
+data_test <- read.csv("E:/Backups/Samanth/samanth/coursera/PML/pml-testing.csv", na.strings= c("NA",""," "))
+data_test_NAs <- apply(data_test, 2, function(x) {sum(is.na(x))})
+data_test_clean <- data_test[,which(data_test_NAs == 0)]
+data_test_clean <- data_test_clean[8:length(data_test_clean)]
+
+# predict the classes of the test set
+predictTest <- predict(model, data_test_clean)
+
+pred1<-predict(model, data_test_clean[20,])
+pred1
+
